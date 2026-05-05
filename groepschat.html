@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Groepschat</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg0: #0d0f14; --bg1: #13161d; --bg2: #1a1e28; --bg3: #222736;
+    --border: #2a2f3e; --border2: #343a4d;
+    --text1: #e8eaf2; --text2: #9198b0; --text3: #5c6280;
+    --accent: #4f7fff; --accent-dim: #1e2e5a; --accent-glow: rgba(79,127,255,0.18);
+    --green: #3ecf8e; --danger: #ff5c5c;
+    --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+    --r: 10px; --rsm: 6px; --rlg: 14px; --rxl: 18px;
+  }
+  html, body { height: 100%; background: var(--bg0); font-family: var(--font); color: var(--text1); }
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+
+  .app { display: flex; width: 100%; max-width: 880px; height: 640px; background: var(--bg1); border: 1px solid var(--border); border-radius: var(--rxl); overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.6); position: relative; }
+
+  .sidebar { width: 230px; min-width: 230px; background: var(--bg0); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .sidebar-top { padding: 18px 14px 12px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo { font-size: 13px; font-weight: 600; color: var(--text2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .sidebar-logo::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .new-btn { width: 100%; padding: 9px 12px; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(79,127,255,0.25); border-radius: var(--rsm); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+  .new-btn:hover { background: rgba(79,127,255,0.25); }
+  .groups-list { flex: 1; overflow-y: auto; padding: 8px; }
+  .groups-list::-webkit-scrollbar { width: 3px; }
+  .groups-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .group-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--rsm); cursor: pointer; margin-bottom: 2px; transition: background 0.12s; border: 1px solid transparent; }
+  .group-item:hover { background: var(--bg2); }
+  .group-item.active { background: var(--bg2); border-color: var(--border2); }
+  .g-avatar { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  .g-info { flex: 1; min-width: 0; }
+  .g-name { font-size: 13px; font-weight: 500; color: var(--text1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .g-prev { font-size: 12px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .user-footer { padding: 12px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: background 0.12s; }
+  .user-footer:hover { background: var(--bg2); }
+  .credit { padding: 8px 14px; font-size: 11px; color: var(--text3); font-family: var(--mono); border-top: 1px solid var(--border); text-align: center; letter-spacing: 0.03em; }
+  .user-dot { width: 30px; height: 30px; border-radius: 8px; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--text2); flex-shrink: 0; }
+  .user-name { font-size: 13px; color: var(--text2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg1); }
+  .chat-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  .chat-avatar { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; flex-shrink: 0; }
+  .chat-meta { flex: 1; }
+  .chat-meta h2 { font-size: 15px; font-weight: 600; color: var(--text1); }
+  .chat-meta p { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .share-btn { padding: 7px 14px; background: transparent; border: 1px solid var(--border2); color: var(--text2); border-radius: var(--rsm); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
+  .share-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+  .messages-area { flex: 1; overflow-y: auto; padding: 20px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .messages-area::-webkit-scrollbar { width: 3px; }
+  .messages-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .msg-row { display: flex; gap: 10px; align-items: flex-end; }
+  .msg-row.own { flex-direction: row-reverse; }
+  .msg-av { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .msg-body { max-width: 68%; }
+  .msg-sender { font-size: 11px; color: var(--text3); margin-bottom: 4px; font-weight: 500; }
+  .msg-row.own .msg-sender { text-align: right; }
+  .msg-bubble { display: inline-block; padding: 9px 14px; border-radius: 14px 14px 14px 4px; font-size: 14px; line-height: 1.55; background: var(--bg3); color: var(--text1); border: 1px solid var(--border); word-break: break-word; max-width: 100%; }
+  .msg-row.own .msg-bubble { background: var(--accent-dim); border-color: rgba(79,127,255,0.3); color: #c8d8ff; border-radius: 14px 14px 4px 14px; }
+  .msg-img { max-width: 260px; max-height: 200px; border-radius: 10px; display: block; cursor: pointer; border: 1px solid var(--border2); transition: opacity 0.15s; }
+  .msg-img:hover { opacity: 0.85; }
+  .msg-time { font-size: 10px; color: var(--text3); margin-top: 4px; font-family: var(--mono); }
+  .msg-row.own .msg-time { text-align: right; }
+  .sys-msg { text-align: center; font-size: 12px; color: var(--text3); padding: 6px; }
+
+  .img-preview-bar { padding: 8px 14px 0; display: flex; align-items: flex-end; gap: 8px; }
+  .img-preview-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border2); }
+  .img-preview-info { font-size: 12px; color: var(--text2); }
+  .img-preview-remove { background: var(--danger); border: none; color: white; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  .input-wrap { padding: 12px 14px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; }
+  .msg-input { flex: 1; padding: 10px 14px; font-family: var(--font); font-size: 14px; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r); color: var(--text1); outline: none; resize: none; max-height: 120px; line-height: 1.45; transition: border-color 0.15s; }
+  .msg-input::placeholder { color: var(--text3); }
+  .msg-input:focus { border-color: var(--accent); }
+  .img-btn { width: 40px; height: 40px; border-radius: var(--r); background: var(--bg2); border: 1px solid var(--border2); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; color: var(--text3); }
+  .img-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .send-btn { width: 40px; height: 40px; border-radius: var(--r); background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+  .send-btn:hover { background: #6b8fff; }
+  .send-btn:active { transform: scale(0.95); }
+
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.88); display: flex; align-items: center; justify-content: center; z-index: 999; cursor: zoom-out; }
+  .lightbox img { max-width: 92vw; max-height: 92vh; border-radius: 10px; box-shadow: 0 24px 80px rgba(0,0,0,0.8); }
+
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  .empty-icon { font-size: 42px; }
+  .empty-state p { font-size: 14px; color: var(--text2); }
+  .empty-btn { padding: 10px 20px; background: var(--accent); color: white; border: none; border-radius: var(--rsm); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; margin-top: 4px; transition: all 0.15s; }
+  .empty-btn:hover { background: #6b8fff; }
+
+  .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; border-radius: var(--rxl); }
+  .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--rlg); padding: 24px; width: 320px; box-shadow: 0 16px 48px rgba(0,0,0,0.5); }
+  .modal h3 { font-size: 16px; font-weight: 600; color: var(--text1); margin-bottom: 16px; }
+  .modal label { display: block; font-size: 12px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .modal-input { width: 100%; padding: 10px 13px; font-family: var(--font); font-size: 14px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--rsm); color: var(--text1); outline: none; margin-bottom: 14px; transition: border-color 0.15s; }
+  .modal-input::placeholder { color: var(--text3); }
+  .modal-input:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .btn-cancel { padding: 8px 16px; background: transparent; border: 1px solid var(--border2); color: var(--text2); border-radius: var(--rsm); font-family: var(--font); font-size: 13px; cursor: pointer; }
+  .btn-cancel:hover { color: var(--text1); }
+  .btn-confirm { padding: 8px 18px; background: var(--accent); border: none; color: white; border-radius: var(--rsm); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn-confirm:hover { background: #6b8fff; }
+  .share-id-box { background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--rsm); padding: 12px 14px; font-family: var(--mono); font-size: 13px; color: var(--accent); word-break: break-all; margin-bottom: 10px; }
+  .copy-btn { width: 100%; padding: 9px; background: var(--bg3); border: 1px solid var(--border2); color: var(--text2); border-radius: var(--rsm); font-family: var(--font); font-size: 13px; cursor: pointer; margin-bottom: 14px; transition: all 0.12s; }
+  .copy-btn:hover { border-color: var(--green); color: var(--green); }
+  .divider { font-size: 11px; color: var(--text3); text-align: center; margin: 4px 0 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .error-hint { font-size: 12px; color: var(--danger); margin-top: -10px; margin-bottom: 10px; display: none; }
+  .info-box { background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--rsm); padding: 12px 14px; font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 14px; }
+  .info-box strong { color: var(--text1); }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="sidebar">
+    <div class="sidebar-top">
+      <div class="sidebar-logo">Groepschat</div>
+      <button class="new-btn" id="newGroupBtn">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Nieuwe groep
+      </button>
+    </div>
+    <div class="groups-list" id="groupsList">
+      <div style="padding:14px;font-size:13px;color:#5c6280;text-align:center;">Laden...</div>
+    </div>
+    <div class="credit">gemaakt door Neal Cordonnier</div>
+    <div class="user-footer" id="userFooter">
+      <div class="user-dot" id="userDot">?</div>
+      <div class="user-name" id="userNameDisplay">Klik om naam in te stellen</div>
+    </div>
+  </div>
+  <div class="main" id="mainArea">
+    <div class="empty-state">
+      <div class="empty-icon">💬</div>
+      <p>Selecteer een groep of maak een nieuwe</p>
+      <button class="empty-btn" id="emptyBtn">Maak je eerste groep</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Storage: werkt zowel op claude.ai (window.storage) als lokaal (localStorage) ──
+const useCloud = typeof window !== 'undefined' && typeof window.storage !== 'undefined';
+
+const store = {
+  async get(k, sh) {
+    if (useCloud) {
+      try { const r = await window.storage.get(k, sh); return r ? JSON.parse(r.value) : null; } catch { return null; }
+    } else {
+      try { const v = localStorage.getItem('__cs__' + k); return v ? JSON.parse(v) : null; } catch { return null; }
+    }
+  },
+  async set(k, v, sh) {
+    if (useCloud) {
+      try { await window.storage.set(k, JSON.stringify(v), sh); } catch {}
+    } else {
+      try { localStorage.setItem('__cs__' + k, JSON.stringify(v)); } catch {}
+    }
+  },
+  async list(prefix, sh) {
+    if (useCloud) {
+      try { const r = await window.storage.list(prefix, sh); return r ? r.keys : []; } catch { return []; }
+    } else {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const raw = localStorage.key(i);
+        if (raw && raw.startsWith('__cs__' + prefix)) keys.push(raw.slice(6));
+      }
+      return keys.sort();
+    }
+  }
+};
+
+// ── Kleurenpalet per naam ──
+const PALETTES = [
+  ['#1a3a5c','#5ba3f5'], ['#1a3a2e','#4ecfa0'], ['#3a1a2e','#d47fc9'],
+  ['#3a2a1a','#e89a5a'], ['#2a1a3a','#9a7ff5'], ['#1a2a3a','#5ab5e8'],
+];
+function palette(name) { let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))&0xFFFF; return PALETTES[h%PALETTES.length]; }
+function initials(n) { return n.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?'; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function timeFmt(ts) {
+  const d=new Date(ts), n=new Date();
+  return d.toDateString()===n.toDateString()
+    ? d.toLocaleTimeString('nl-BE',{hour:'2-digit',minute:'2-digit'})
+    : d.toLocaleDateString('nl-BE',{day:'2-digit',month:'2-digit'});
+}
+
+// ── State ──
+let me = localStorage.getItem('chat_un') || null;
+let currentGid = null;
+let pollTimer = null;
+let lastCount = 0;
+let groups = [];
+let pendingImg = null;
+
+function updateFooter() {
+  document.getElementById('userDot').textContent = me ? initials(me) : '?';
+  document.getElementById('userNameDisplay').textContent = me || 'Klik om naam in te stellen';
+}
+
+// ── Modal helper ──
+function openModal(html) {
+  const ov = document.createElement('div');
+  ov.className = 'modal-overlay';
+  ov.innerHTML = '<div class="modal">' + html + '</div>';
+  document.getElementById('app').appendChild(ov);
+  return ov;
+}
+
+// ── Gebruikersnaam vragen ──
+function askUsername(cb) {
+  const ov = openModal(
+    '<h3>Welkom 👋</h3>' +
+    '<label>Jouw gebruikersnaam</label>' +
+    '<input class="modal-input" id="unInp" type="text" placeholder="bv. Jan, Emma..." maxlength="24" autocomplete="off">' +
+    '<div class="modal-btns"><button class="btn-confirm" id="unOk">Starten</button></div>'
+  );
+  const inp = ov.querySelector('#unInp');
+  function go() {
+    const v = inp.value.trim();
+    if (!v) { inp.style.borderColor='#ff5c5c'; inp.focus(); return; }
+    me = v; localStorage.setItem('chat_un', v);
+    ov.remove(); updateFooter(); if(cb) cb();
+  }
+  ov.querySelector('#unOk').addEventListener('click', go);
+  inp.addEventListener('keydown', function(e){ if(e.key==='Enter') go(); });
+  setTimeout(function(){ inp.focus(); }, 60);
+}
+function ensureUser(cb) { if(me) cb(); else askUsername(cb); }
+
+// ── Nieuwe groep ──
+function showNewGroup() {
+  ensureUser(function() {
+    const ov = openModal(
+      '<h3>Nieuwe groep aanmaken</h3>' +
+      '<label>Groepsnaam</label>' +
+      '<input class="modal-input" id="gnInp" type="text" placeholder="bv. Vrienden, Familie..." maxlength="32" autocomplete="off">' +
+      '<div class="modal-btns">' +
+        '<button class="btn-cancel" id="gnCancel">Annuleren</button>' +
+        '<button class="btn-confirm" id="gnOk">Aanmaken</button>' +
+      '</div>'
+    );
+    const inp = ov.querySelector('#gnInp');
+    function go() {
+      const v = inp.value.trim();
+      if (!v) { inp.style.borderColor='#ff5c5c'; inp.focus(); return; }
+      ov.remove();
+      const id = 'grp_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+      const g = { id: id, name: v, created: Date.now(), creator: me };
+      store.set('group:' + id, g, true).then(function() {
+        loadGroups().then(function() { selectGroup(id); });
+      });
+    }
+    ov.querySelector('#gnOk').addEventListener('click', go);
+    ov.querySelector('#gnCancel').addEventListener('click', function(){ ov.remove(); });
+    inp.addEventListener('keydown', function(e){ if(e.key==='Enter') go(); });
+    setTimeout(function(){ inp.focus(); }, 60);
+  });
+}
+
+// ── Groepen laden ──
+async function loadGroups() {
+  const keys = await store.list('group:', true);
+  const loaded = [];
+  for (const k of keys) { const g = await store.get(k, true); if(g) loaded.push(g); }
+  groups = loaded.sort(function(a,b){ return b.created - a.created; });
+  renderSidebar();
+}
+
+function renderSidebar() {
+  const el = document.getElementById('groupsList');
+  if (!groups.length) {
+    el.innerHTML = '<div style="padding:14px;font-size:13px;color:#5c6280;text-align:center;">Nog geen groepen</div>';
+    return;
+  }
+  let html = '';
+  groups.forEach(function(g) {
+    const c = palette(g.name);
+    html += '<div class="group-item' + (g.id===currentGid?' active':'') + '" data-gid="' + esc(g.id) + '">' +
+      '<div class="g-avatar" style="background:' + c[0] + ';color:' + c[1] + '">' + esc(initials(g.name)) + '</div>' +
+      '<div class="g-info">' +
+        '<div class="g-name">' + esc(g.name) + '</div>' +
+        '<div class="g-prev" id="prev_' + esc(g.id) + '">...</div>' +
+      '</div>' +
+    '</div>';
+  });
+  el.innerHTML = html;
+  el.querySelectorAll('.group-item').forEach(function(item) {
+    item.addEventListener('click', function(){ selectGroup(item.dataset.gid); });
+  });
+  groups.forEach(function(g){ loadPreview(g.id); });
+}
+
+async function loadPreview(gid) {
+  const keys = (await store.list('msg:'+gid+':', true)).sort();
+  const el = document.getElementById('prev_'+gid);
+  if (!el) return;
+  if (!keys.length) { el.textContent = 'Nog geen berichten'; return; }
+  const last = await store.get(keys[keys.length-1], true);
+  if (last && el) el.textContent = last.img ? '📷 Foto' : (last.user + ': ' + (last.text||''));
+}
+
+// ── Groep selecteren ──
+function selectGroup(gid) {
+  ensureUser(async function() {
+    currentGid = gid; lastCount = 0;
+    if (pollTimer) clearInterval(pollTimer);
+    renderSidebar();
+    const group = groups.find(function(g){ return g.id === gid; });
+    if (!group) return;
+    renderChat(group);
+    await loadMessages(gid, false);
+    pollTimer = setInterval(function(){ loadMessages(gid, true); }, 2500);
+  });
+}
+
+function renderChat(group) {
+  const c = palette(group.name);
+  const main = document.getElementById('mainArea');
+  main.innerHTML =
+    '<div class="chat-header">' +
+      '<div class="chat-avatar" style="background:' + c[0] + ';color:' + c[1] + '">' + esc(initials(group.name)) + '</div>' +
+      '<div class="chat-meta"><h2>' + esc(group.name) + '</h2><p id="memberInfo">...</p></div>' +
+      '<button class="share-btn" id="shareBtn">' +
+        '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.499 2.499 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256z"/></svg>' +
+        ' Deel' +
+      '</button>' +
+    '</div>' +
+    '<div id="imgPreviewBar"></div>' +
+    '<div class="messages-area" id="msgsArea"></div>' +
+    '<div class="input-wrap">' +
+      '<button class="img-btn" id="imgBtn" title="Foto versturen">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+      '</button>' +
+      '<input type="file" id="fileInp" accept="image/*" style="display:none">' +
+      '<textarea class="msg-input" id="msgInp" rows="1" placeholder="Stuur een bericht..."></textarea>' +
+      '<button class="send-btn" id="sendBtn">' +
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="white"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11z"/></svg>' +
+      '</button>' +
+    '</div>';
+
+  document.getElementById('shareBtn').addEventListener('click', function(){ showShare(group); });
+  document.getElementById('sendBtn').addEventListener('click', sendMsg);
+  document.getElementById('imgBtn').addEventListener('click', function(){ document.getElementById('fileInp').click(); });
+  document.getElementById('fileInp').addEventListener('change', function(e){ const f=e.target.files[0]; if(f) processImg(f); e.target.value=''; });
+
+  const inp = document.getElementById('msgInp');
+  inp.addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();} });
+  inp.addEventListener('input', function(){ inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,120)+'px'; });
+
+  // Drag & drop
+  const area = document.getElementById('msgsArea');
+  area.addEventListener('dragover', function(e){ e.preventDefault(); area.style.outline='2px dashed #4f7fff'; area.style.outlineOffset='-4px'; });
+  area.addEventListener('dragleave', function(){ area.style.outline=''; });
+  area.addEventListener('drop', function(e){ e.preventDefault(); area.style.outline=''; const f=e.dataTransfer.files[0]; if(f&&f.type.startsWith('image/')) processImg(f); });
+
+  // Paste
+  document.addEventListener('paste', handlePaste);
+
+  setTimeout(function(){ inp.focus(); }, 60);
+}
+
+function handlePaste(e) {
+  if (!currentGid) return;
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (let i=0; i<items.length; i++) {
+    if (items[i].type.startsWith('image/')) { const f=items[i].getAsFile(); if(f) processImg(f); break; }
+  }
+}
+
+function processImg(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const max = 900;
+      let w=img.width, h=img.height;
+      if (w>max||h>max) { if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      pendingImg = canvas.toDataURL('image/jpeg', 0.82);
+      renderImgPreview(pendingImg);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderImgPreview(src) {
+  const bar = document.getElementById('imgPreviewBar');
+  if (!bar) return;
+  bar.innerHTML =
+    '<div class="img-preview-bar">' +
+      '<img class="img-preview-thumb" src="' + src + '">' +
+      '<button class="img-preview-remove" id="removeImg">×</button>' +
+      '<span class="img-preview-info">Foto klaar om te verzenden</span>' +
+    '</div>';
+  document.getElementById('removeImg').addEventListener('click', function(){ pendingImg=null; bar.innerHTML=''; });
+}
+
+async function loadMessages(gid, silent) {
+  if (gid !== currentGid) return;
+  const keys = (await store.list('msg:'+gid+':', true)).sort();
+  if (silent && keys.length === lastCount) return;
+  lastCount = keys.length;
+  const msgs = [];
+  for (const k of keys) { const m = await store.get(k, true); if(m) msgs.push(m); }
+  renderMessages(msgs);
+  const users = [...new Set(msgs.map(function(m){return m.user;}))];
+  const el = document.getElementById('memberInfo');
+  if (el) el.textContent = users.length
+    ? users.length + ' deelnemer' + (users.length!==1?'s':'') + ' · ' + users.slice(0,3).join(', ') + (users.length>3?' …':'')
+    : 'Wees de eerste!';
+  loadPreview(gid);
+}
+
+function renderMessages(msgs) {
+  const area = document.getElementById('msgsArea');
+  if (!area) return;
+  const atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
+  if (!msgs.length) { area.innerHTML = '<div class="sys-msg">Nog geen berichten — stuur het eerste! 🎉</div>'; return; }
+  let html = '';
+  msgs.forEach(function(m) {
+    const own = m.user === me;
+    const c = palette(m.user);
+    const content = m.img
+      ? '<img class="msg-img" src="' + m.img + '" alt="foto">'
+      : '<div class="msg-bubble">' + esc(m.text) + '</div>';
+    html +=
+      '<div class="msg-row' + (own?' own':'') + '">' +
+        '<div class="msg-av" style="background:' + c[0] + ';color:' + c[1] + '">' + esc(initials(m.user)) + '</div>' +
+        '<div class="msg-body">' +
+          '<div class="msg-sender">' + (own?'Jij':esc(m.user)) + '</div>' +
+          content +
+          '<div class="msg-time">' + timeFmt(m.ts) + '</div>' +
+        '</div>' +
+      '</div>';
+  });
+  area.innerHTML = html;
+  area.querySelectorAll('.msg-img').forEach(function(img) {
+    img.addEventListener('click', function() {
+      const lb = document.createElement('div');
+      lb.className = 'lightbox';
+      lb.innerHTML = '<img src="' + img.src + '" alt="foto">';
+      lb.addEventListener('click', function(){ lb.remove(); });
+      document.body.appendChild(lb);
+    });
+  });
+  if (atBottom) area.scrollTop = area.scrollHeight;
+}
+
+async function sendMsg() {
+  const inp = document.getElementById('msgInp');
+  if (!inp || !currentGid) return;
+  const text = inp.value.trim();
+  if (!text && !pendingImg) return;
+  inp.value = ''; inp.style.height = 'auto';
+  const ts = Date.now();
+  const uid = Math.random().toString(36).slice(2,6);
+  const msg = { user: me, ts: ts, groupId: currentGid };
+  if (pendingImg) {
+    msg.img = pendingImg; pendingImg = null;
+    const bar = document.getElementById('imgPreviewBar'); if(bar) bar.innerHTML='';
+  } else {
+    msg.text = text;
+  }
+  await store.set('msg:' + currentGid + ':' + ts + '_' + uid, msg, true);
+  await loadMessages(currentGid, false);
+}
+
+// ── Deel modal ──
+function showShare(group) {
+  const localNote = !useCloud
+    ? '<div class="info-box">⚠️ Je gebruikt de app als <strong>lokaal bestand</strong>. Berichten worden opgeslagen in <strong>jouw browser</strong> op dit apparaat. Om met anderen te chatten, moet je het bestand hosten (bv. via GitHub Pages of een webserver).</div>'
+    : '';
+  const ov = openModal(
+    '<h3>Deel "' + esc(group.name) + '"</h3>' +
+    localNote +
+    (useCloud
+      ? '<p style="font-size:13px;color:#9198b0;margin-bottom:10px;">Stuur vrienden dit groeps-ID. Ze kunnen het invullen hieronder om mee te doen.</p>' +
+        '<div class="share-id-box">' + esc(group.id) + '</div>' +
+        '<button class="copy-btn" id="copyBtn">Kopieer groeps-ID</button>' +
+        '<div class="divider">of doe mee met een andere groep</div>' +
+        '<label>Groeps-ID invoeren</label>' +
+        '<input class="modal-input" id="joinInp" type="text" placeholder="grp_..." autocomplete="off">' +
+        '<div class="error-hint" id="joinErr">Groep niet gevonden, controleer het ID</div>' +
+        '<div class="modal-btns"><button class="btn-cancel" id="shareClose">Sluiten</button><button class="btn-confirm" id="joinBtn">Doe mee</button></div>'
+      : '<div class="modal-btns"><button class="btn-confirm" id="shareClose">Begrepen</button></div>'
+    )
+  );
+
+  if (useCloud) {
+    ov.querySelector('#copyBtn').addEventListener('click', function() {
+      navigator.clipboard.writeText(group.id).catch(function(){});
+      this.textContent='✓ Gekopieerd!'; this.style.color='#3ecf8e'; this.style.borderColor='#3ecf8e';
+      const btn = this;
+      setTimeout(function(){ btn.textContent='Kopieer groeps-ID'; btn.style.color=''; btn.style.borderColor=''; }, 2000);
+    });
+    ov.querySelector('#joinBtn').addEventListener('click', async function() {
+      const id = ov.querySelector('#joinInp').value.trim();
+      if (!id) return;
+      const existing = await store.get('group:'+id, true);
+      if (existing) {
+        ov.remove();
+        if (!groups.find(function(g){return g.id===id;})) groups.unshift(existing);
+        renderSidebar(); selectGroup(id);
+      } else {
+        document.getElementById('joinErr').style.display='block';
+        ov.querySelector('#joinInp').style.borderColor='#ff5c5c';
+      }
+    });
+  }
+  ov.querySelector('#shareClose').addEventListener('click', function(){ ov.remove(); });
+}
+
+// ── Naam wijzigen ──
+document.getElementById('userFooter').addEventListener('click', function() {
+  const ov = openModal(
+    '<h3>Gebruikersnaam wijzigen</h3>' +
+    '<label>Nieuwe naam</label>' +
+    '<input class="modal-input" id="renInp" type="text" value="' + esc(me||'') + '" maxlength="24" autocomplete="off">' +
+    '<div class="modal-btns">' +
+      '<button class="btn-cancel" id="renCancel">Annuleren</button>' +
+      '<button class="btn-confirm" id="renOk">Opslaan</button>' +
+    '</div>'
+  );
+  const inp = ov.querySelector('#renInp');
+  function go() { const v=inp.value.trim(); if(!v){inp.focus();return;} me=v; localStorage.setItem('chat_un',v); ov.remove(); updateFooter(); }
+  ov.querySelector('#renOk').addEventListener('click', go);
+  ov.querySelector('#renCancel').addEventListener('click', function(){ ov.remove(); });
+  inp.addEventListener('keydown', function(e){ if(e.key==='Enter') go(); });
+  inp.select(); setTimeout(function(){ inp.focus(); }, 60);
+});
+
+document.getElementById('newGroupBtn').addEventListener('click', showNewGroup);
+document.getElementById('emptyBtn').addEventListener('click', showNewGroup);
+
+updateFooter();
+loadGroups();
+</script>
+</body>
+</html>
